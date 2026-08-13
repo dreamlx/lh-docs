@@ -1,7 +1,7 @@
 # API consumer quickstart
 
-> **Audience**: developers (P3 in `docs/personas.md`) who have just been handed an `sk-...` key by their company's LH admin (P1) and need to start integrating right away.
-> **You will not need to read the rest of `docs/`** to get to a working call. This doc is the integration contract.
+> **Audience**: developers (P3) who have just been handed an `sk-...` key by their company's LH admin (P1) and need to start integrating right away.
+> **You will not need to read other documentation** to get to a working call. This doc is the integration contract.
 
 Looking for the Chinese version? See [`api-consumer-quickstart.zh.md`](./api-consumer-quickstart.zh.md).
 
@@ -243,5 +243,3 @@ If your integration needs one of the unsupported endpoints, file an issue or tal
 ## 7. Where to look next
 
 - **Console UI** (admin only) — your admin can see usage, activity, billing in real time at the console URL.
-- **Onboarding guide** — `docs/onboarding.md` covers the full P1 → P3 handoff path.
-- **Personas** — `docs/personas.md` describes who's who in this system.

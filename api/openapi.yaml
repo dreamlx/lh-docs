@@ -5,7 +5,7 @@ info:
   description: Enterprise management console for LLM gateway (new-api)
 
 servers:
-  - url: http://localhost:3000/api
+  - url: https://your-gateway-host/api
     description: Local development
 
 tags:
