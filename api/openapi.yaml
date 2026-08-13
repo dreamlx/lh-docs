@@ -1,0 +1,788 @@
+openapi: 3.0.3
+info:
+  title: LH Enterprise API
+  version: 1.0.0
+  description: Enterprise management console for LLM gateway (new-api)
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Authentication (E1)
+  - name: Organization
+    description: Organization management (E1)
+  - name: Member
+    description: Team member management (E1)
+  - name: Plan
+    description: Plan catalog (E1)
+  - name: Subscription
+    description: Subscription management (E1)
+  - name: ApiKey
+    description: API key management (E1)
+  - name: Relay
+    description: LLM proxy relay (E2)
+  - name: Callback
+    description: Usage callback from new-api (E2)
+  - name: Usage
+    description: Usage logs and analytics (E3)
+  - name: Billing
+    description: Billing and balance (E3)
+
+paths:
+  # ── Auth (E1) ──────────────────────────────────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Admin login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: JWT token + user info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user info
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  # ── Organization (E1) ─────────────────────────────────────
+  /organizations:
+    get:
+      tags: [Organization]
+      summary: Get current organization
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Organization details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+
+    patch:
+      tags: [Organization]
+      summary: Update organization
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Updated organization
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+
+  # ── Members (E1) ──────────────────────────────────────────
+  /members:
+    get:
+      tags: [Member]
+      summary: List members
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated members
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMembers'
+
+    post:
+      tags: [Member]
+      summary: Create member
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMember'
+      responses:
+        '201':
+          description: Created member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+
+  /members/{id}:
+    get:
+      tags: [Member]
+      summary: Get member by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Member details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+
+    patch:
+      tags: [Member]
+      summary: Update member
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMember'
+      responses:
+        '200':
+          description: Updated member
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+
+    delete:
+      tags: [Member]
+      summary: Deactivate member
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Member deactivated
+
+  # ── Plans (E1) ────────────────────────────────────────────
+  /plans:
+    get:
+      tags: [Plan]
+      summary: List available plans
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Plan catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Plan'
+
+  # ── Subscriptions (E1) ────────────────────────────────────
+  /subscriptions:
+    get:
+      tags: [Subscription]
+      summary: List org subscriptions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Subscription'
+
+    post:
+      tags: [Subscription]
+      summary: Create subscription
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubscription'
+      responses:
+        '201':
+          description: Created subscription
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+
+  # ── API Keys (E1) ─────────────────────────────────────────
+  /api-keys:
+    get:
+      tags: [ApiKey]
+      summary: List API keys
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: API keys (hash masked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedApiKeys'
+
+    post:
+      tags: [ApiKey]
+      summary: Create API key
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKey'
+      responses:
+        '201':
+          description: Created API key (plaintext key returned ONCE)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  key:
+                    type: string
+                    description: 'sk-xxxx... — only shown once'
+                  keyPrefix:
+                    type: string
+
+  /api-keys/{id}/revoke:
+    post:
+      tags: [ApiKey]
+      summary: Revoke API key
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Key revoked
+
+  # ── Relay (E2) ────────────────────────────────────────────
+  /v1/chat/completions:
+    post:
+      tags: [Relay]
+      summary: LLM chat completions (OpenAI-compatible)
+      description: |
+        Proxies to new-api. Authenticates via API key (sk-xxxx).
+        Supports streaming (SSE) via stream=true.
+      security:
+        - apiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [model, messages]
+              properties:
+                model:
+                  type: string
+                  example: gpt-4o
+                messages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        enum: [system, user, assistant]
+                      content:
+                        type: string
+                stream:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Chat completion response or SSE stream
+
+  # ── Callback (E2) ─────────────────────────────────────────
+  /callback/usage:
+    post:
+      tags: [Callback]
+      summary: Usage callback from new-api
+      description: Called by new-api after each LLM request completes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsageCallback'
+      responses:
+        '200':
+          description: Callback processed
+
+  # ── Usage (E3) ────────────────────────────────────────────
+  /usage:
+    get:
+      tags: [Usage]
+      summary: Query usage logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: model
+          in: query
+          schema:
+            type: string
+        - name: apiKeyId
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated usage logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUsageLogs'
+
+  # ── Billing (E3) ──────────────────────────────────────────
+  /billing/balance:
+    get:
+      tags: [Billing]
+      summary: Get org balance
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current balance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: string
+                    description: Decimal string
+                  currency:
+                    type: string
+
+  /billing/balance-logs:
+    get:
+      tags: [Billing]
+      summary: Query balance transaction logs
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Paginated balance logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBalanceLogs'
+
+  /billing/quota:
+    get:
+      tags: [Billing]
+      summary: Get current quota usage for active subscriptions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Quota usage per subscription/dimension
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QuotaUsage'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'Bearer sk-xxxx...'
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+    PageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        default: 20
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              statusCode:
+                type: integer
+                example: 401
+              message:
+                type: string
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        orgId:
+          type: string
+        orgName:
+          type: string
+          description: Organization name (from join)
+        role:
+          type: string
+          enum: [ADMIN]
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        balance:
+          type: string
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, CLOSED]
+
+    Member:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        department:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE]
+
+    CreateMember:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        department:
+          type: string
+
+    UpdateMember:
+      type: object
+      properties:
+        name:
+          type: string
+        department:
+          type: string
+
+    Plan:
+      type: object
+      properties:
+        id:
+          type: string
+        family:
+          type: string
+          enum: [OFFICE, ADVANCED, CODING]
+        tier:
+          type: string
+          enum: [PRO, MAX]
+        displayName:
+          type: string
+        quotas:
+          type: array
+          items:
+            type: object
+            properties:
+              dimension:
+                type: string
+              limit:
+                type: number
+              window:
+                type: string
+
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: string
+        planId:
+          type: string
+        maxKeys:
+          type: integer
+        contractStart:
+          type: string
+          format: date-time
+        commitmentEnd:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [ACTIVE, EXPIRED, CANCELLED]
+
+    CreateSubscription:
+      type: object
+      required: [planId, maxKeys, contractStart, commitmentEnd]
+      properties:
+        planId:
+          type: string
+        maxKeys:
+          type: integer
+        contractStart:
+          type: string
+          format: date-time
+        commitmentEnd:
+          type: string
+          format: date-time
+
+    CreateApiKey:
+      type: object
+      required: [memberId, subscriptionId]
+      properties:
+        memberId:
+          type: string
+        subscriptionId:
+          type: string
+        label:
+          type: string
+
+    UsageCallback:
+      type: object
+      properties:
+        token_id:
+          type: integer
+        token_name:
+          type: string
+        model_name:
+          type: string
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        quota_cost:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    QuotaUsage:
+      type: object
+      properties:
+        subscriptionId:
+          type: string
+        planName:
+          type: string
+        dimension:
+          type: string
+        used:
+          type: number
+        limit:
+          type: number
+        window:
+          type: string
+
+    PaginatedMembers:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    PaginatedApiKeys:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              keyPrefix:
+                type: string
+              memberId:
+                type: string
+              subscriptionId:
+                type: string
+              label:
+                type: string
+                nullable: true
+              status:
+                type: string
+                enum: [ACTIVE, REVOKED]
+              createdAt:
+                type: string
+                format: date-time
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    PaginatedUsageLogs:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              model:
+                type: string
+              promptTokens:
+                type: integer
+              completionTokens:
+                type: integer
+              billingDecision:
+                type: string
+                enum: [PLAN_CONSUMPTION, BALANCE_CHARGE, REJECTED, PENDING]
+              cost:
+                type: string
+                nullable: true
+              createdAt:
+                type: string
+                format: date-time
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+
+    PaginatedBalanceLogs:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              type:
+                type: string
+                enum: [DEPOSIT, BALANCE_CHARGE, ADJUSTMENT, REFUND]
+              amount:
+                type: string
+              model:
+                type: string
+                nullable: true
+              description:
+                type: string
+                nullable: true
+              createdAt:
+                type: string
+                format: date-time
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
